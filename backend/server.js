@@ -37,6 +37,8 @@ io.on('connection', (socket) => {
 });
 
 // Routes
+// Add this near your other app.use() route declarations
+app.use('/api/ai', require('./routes/ai'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/stations', require('./routes/stations'));
 app.use('/api/slots', require('./routes/slots'));

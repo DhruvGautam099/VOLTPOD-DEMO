@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Zap, Map as MapIcon, Users, BarChart, LogOut, LayoutDashboard, Sparkles, Moon, Sun } from 'lucide-react';
 
 const NavItem = ({ to, icon: Icon, label }) => {
@@ -50,8 +50,6 @@ const Sidebar = () => {
     navigate('/login');
   };
 
-
-
   return (
     <div className="w-64 bg-[#f8fafc] dark:bg-[#161b33] border-r border-gray-200 dark:border-gray-800 h-full flex-col justify-between hidden md:flex shrink-0 transition-colors duration-300">
       <div className="p-6">
@@ -75,9 +73,10 @@ const Sidebar = () => {
             {user?.role === 'admin' && (
               <NavItem to="/admin" icon={Users} label="Admin Panel" />
             )}
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5">
-              <Sparkles className="w-5 h-5" /> AI Assistant
-            </button>
+
+            {/* FIXED: This is now a working NavItem link to /ai */}
+            <NavItem to="/ai" icon={Sparkles} label="AI Assistant" />
+
           </div>
         </div>
       </div>

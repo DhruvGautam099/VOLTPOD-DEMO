@@ -7,7 +7,12 @@ const Dashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // AI Machine Learning State
+  const [predictions, setPredictions] = useState([]);
+  const [predicting, setPredicting] = useState(true);
+
   useEffect(() => {
+    // 1. Fetch User Bookings
     const fetchBookingsData = () => {
       const token = localStorage.getItem('token');
       axios.get('http://localhost:5000/api/bookings/my', {
@@ -22,6 +27,33 @@ const Dashboard = () => {
     };
 
     fetchBookingsData();
+
+    // 2. Fetch ML Predictions from Python Server
+    const fetchPredictions = async () => {
+      try {
+        const currentHour = new Date().getHours();
+        const currentDay = new Date().getDay();
+
+        // Predict for right now, +2 hours, and +4 hours
+        const hoursToPredict = [currentHour, (currentHour + 2) % 24, (currentHour + 4) % 24];
+
+        const mlData = await Promise.all(
+          hoursToPredict.map(hr =>
+            axios.get(`http://localhost:8000/api/predict?hour=${hr}&day=${currentDay}&station_id=1`)
+          )
+        );
+
+        setPredictions(mlData.map(res => res.data));
+        setPredicting(false);
+      } catch (error) {
+        console.error("ML Service offline:", error);
+        setPredicting(false);
+      }
+    };
+
+    fetchPredictions();
+
+    // 3. Setup WebSockets
     const socket = io('http://localhost:5000');
     socket.on('slotStatusChanged', fetchBookingsData);
     return () => socket.close();
@@ -43,19 +75,16 @@ const Dashboard = () => {
   };
 
   return (
-    // Added dark:bg-[#0a0f1a]
     <div className="h-full overflow-y-auto p-8 bg-[#eef2f6] dark:bg-[#0a0f1a] custom-scrollbar transition-colors duration-300">
       <div className="max-w-6xl mx-auto">
         
         <div className="flex justify-between items-center mb-8">
-          {/* Added dark:text-white */}
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight">Dashboard Overview</h1>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           <div className="lg:col-span-2 space-y-6">
-            {/* Added dark classes to the main card */}
             <div className="bg-[#f8fafc] dark:bg-[#111827] rounded-3xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden min-h-[500px] transition-colors duration-300">
               <div className="p-6 border-b border-gray-100 dark:border-gray-800">
                 <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Recent Bookings</h2>
@@ -121,8 +150,7 @@ const Dashboard = () => {
           </div>
 
           <div className="space-y-6">
-            
-            {/* Card 1 */}
+
             <div className="bg-[#f8fafc] dark:bg-[#111827] rounded-3xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 transition-colors duration-300">
               <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-6 uppercase tracking-widest">Live AI Insights</h3>
               
@@ -159,33 +187,50 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Card 2 */}
+            {/* Real Machine Learning Predicted Wait Times Card */}
             <div className="bg-[#f8fafc] dark:bg-[#111827] rounded-3xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 transition-colors duration-300">
-               <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-6 uppercase tracking-widest">Predicted Wait Times</h3>
-               <div className="space-y-4">
-                 <div className="flex items-center justify-between text-sm">
-                   <span className="text-gray-600 dark:text-gray-300 font-medium">Now</span>
-                   <div className="w-32 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden flex">
-                     <div className="w-1/3 bg-green-500 rounded-full"></div>
-                   </div>
-                   <span className="text-green-500 font-bold text-xs w-8 text-right">Low</span>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+                  AI Wait Time Forecast
+                </h3>
+                <span className="flex items-center gap-1 text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 px-2 py-1 rounded font-bold uppercase">
+                  Random Forest ML
+                </span>
+              </div>
+
+              {predicting ? (
+                <div className="flex justify-center p-6">
+                  <div className="animate-spin w-6 h-6 border-2 border-indigo-600 rounded-full border-t-transparent"></div>
                  </div>
-                 <div className="flex items-center justify-between text-sm">
-                   <span className="text-gray-600 dark:text-gray-300 font-medium">5 PM</span>
-                   <div className="w-32 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden flex">
-                     <div className="w-2/3 bg-yellow-500 rounded-full"></div>
-                   </div>
-                   <span className="text-yellow-500 font-bold text-xs w-8 text-right">High</span>
-                 </div>
-                 <div className="flex items-center justify-between text-sm">
-                   <span className="text-gray-600 dark:text-gray-300 font-medium">7 PM</span>
-                   <div className="w-32 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden flex">
-                     <div className="w-full bg-red-500 rounded-full"></div>
-                   </div>
-                   <span className="text-red-500 font-bold text-xs w-8 text-right">Peak</span>
-                 </div>
-               </div>
-               <p className="text-[10px] text-gray-400 mt-4 text-center">AI-predicted - MP Nagar Hub</p>
+              ) : predictions.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">ML Model Offline. Start Python server.</p>
+              ) : (
+                <div className="space-y-5">
+                  {predictions.map((pred, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600 dark:text-gray-300 font-medium w-16">
+                        {idx === 0 ? 'Now' : `${pred.hour}:00`}
+                      </span>
+
+                      <div className="flex-1 h-2 mx-4 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden flex">
+                        <div
+                          className={`h-full rounded-full transition-all duration-1000 ${pred.color === 'green' ? 'bg-green-500' :
+                              pred.color === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}
+                          style={{ width: `${pred.busyness_percentage}%` }}
+                        ></div>
+                      </div>
+
+                       <span className={`font-bold text-xs w-10 text-right ${pred.color === 'green' ? 'text-green-500' :
+                           pred.color === 'yellow' ? 'text-yellow-500' : 'text-red-500'
+                         }`}>
+                         {pred.status}
+                       </span>
+                     </div>
+                   ))}
+                    </div>
+              )}
+              <p className="text-[10px] text-gray-400 mt-6 text-center">Live Scikit-Learn Regression - MP Nagar Hub</p>
             </div>
 
           </div>

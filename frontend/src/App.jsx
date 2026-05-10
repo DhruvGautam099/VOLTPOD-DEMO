@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
+import AIAssistant from './pages/AIAssistant';
 import Sidebar from './components/Sidebar';
 import Landing from './pages/Landing';
 import Home from './pages/Home';
@@ -33,6 +34,7 @@ function App() {
             {/* Note: The duplicate /book route is removed */}
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/ai" element={<AIAssistant />} />
             <Route path="/operator" element={<OperatorDashboard />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
