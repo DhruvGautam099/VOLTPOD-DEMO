@@ -33,6 +33,12 @@ npm install
 npm run dev
 ```
 
+###4.Python ml services setup
+
+open new terminal and entter following commands
+cd ml-service
+pip install -r requirements.txt
+python app.py
 ## Features
 - **Real-time Map**: Browse charging stations around the city.
 - **Dynamic Dashboard**: View your upcoming, active, and completed bookings.
