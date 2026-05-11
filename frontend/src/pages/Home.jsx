@@ -33,7 +33,7 @@ const Home = () => {
   }, []);
 
   return (
-    <div className="flex h-full w-full overflow-hidden relative text-white">
+    <div className="flex h-full w-full overflow-hidden relative text-gray-900 dark:text-white">
       <StationSidebar 
         stations={stations} 
         loading={loading} 

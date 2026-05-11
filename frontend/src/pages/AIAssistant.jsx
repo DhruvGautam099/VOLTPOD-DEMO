@@ -37,6 +37,7 @@ const AIAssistant = () => {
       
       setMessages(prev => [...prev, { role: 'ai', text: res.data.reply }]);
     } catch (error) {
+      console.error('Chat error:', error);
       setMessages(prev => [...prev, { role: 'error', text: 'Sorry, I am having trouble connecting to the network right now.' }]);
     } finally {
       setLoading(false);

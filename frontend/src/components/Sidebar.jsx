@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import { Zap, Map as MapIcon, Users, BarChart, LogOut, LayoutDashboard, Sparkles, Moon, Sun } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Zap, Map as MapIcon, Users, BarChart, LogOut, LayoutDashboard, Sparkles, Moon, Sun, Wallet } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 const NavItem = ({ to, icon: Icon, label }) => {
   const location = useLocation();
@@ -21,28 +22,25 @@ const NavItem = ({ to, icon: Icon, label }) => {
 };
 
 const Sidebar = () => {
-  const location = useLocation();
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user'));
   
-  // Theme state
-  const [isDark, setIsDark] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
-    return savedTheme === 'dark' || !savedTheme;
-  });
+  // ANTI-CRASH FIX 1: Safely default to an empty object if the user is logged out
+  const user = JSON.parse(localStorage.getItem('user')) || {};
 
-  const toggleTheme = () => {
-    if (isDark) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      setIsDark(false);
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-      setIsDark(true);
-    }
-  };
+  const { isDark, toggleTheme } = useTheme();
+
+  // ANTI-CRASH FIX 2: Strictly format the wallet as a Number so .toFixed() never crashes
+  const [wallet, setWallet] = useState(Number(user?.walletBalance) || 0);
+
+  useEffect(() => {
+    const handleWalletUpdate = () => {
+      const updatedUser = JSON.parse(localStorage.getItem('user'));
+      if (updatedUser) setWallet(Number(updatedUser.walletBalance) || 0);
+    };
+    window.addEventListener('walletUpdated', handleWalletUpdate);
+    return () => window.removeEventListener('walletUpdated', handleWalletUpdate);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -67,16 +65,11 @@ const Sidebar = () => {
           
           <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-800/50">
             <p className="text-[10px] font-bold text-gray-500 mb-4 px-2 tracking-widest uppercase">Account</p>
-            {user?.role === 'operator' && (
-              <NavItem to="/operator" icon={BarChart} label="Revenue" />
-            )}
-            {user?.role === 'admin' && (
-              <NavItem to="/admin" icon={Users} label="Admin Panel" />
-            )}
-
-            {/* FIXED: This is now a working NavItem link to /ai */}
+            {/* ADDED: The Missing Wallet Navigation Link */}
+            {token && <NavItem to="/wallet" icon={Wallet} label="My Wallet" />}
+            {user?.role === 'operator' && <NavItem to="/operator" icon={BarChart} label="Revenue" />}
+            {user?.role === 'admin' && <NavItem to="/admin" icon={Users} label="Admin Panel" />}
             <NavItem to="/ai" icon={Sparkles} label="AI Assistant" />
-
           </div>
         </div>
       </div>
@@ -90,28 +83,29 @@ const Sidebar = () => {
               </div>
               <div className="overflow-hidden pr-2">
                 <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{user?.name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-green-500"></span> Online
-                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="flex items-center gap-1 text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-500/30">
+                    <Wallet className="w-3 h-3" /> ₹{wallet.toFixed(0)}
+                  </span>
+                </div>
               </div>
             </div>
             
             <div className="flex items-center gap-2 shrink-0">
-              {/* THEME TOGGLE BUTTON */}
-              <button onClick={toggleTheme} className="text-gray-500 dark:text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors p-1" title="Toggle Theme">
+              <button onClick={toggleTheme} className="text-gray-500 dark:text-gray-400 hover:text-yellow-500 transition-colors p-1">
                 {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
-              <button onClick={handleLogout} className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors p-1" title="Logout">
+              <button onClick={handleLogout} className="text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors p-1">
                 <LogOut className="w-5 h-5" />
               </button>
             </div>
           </div>
         ) : (
           <div className="space-y-3">
-            <button onClick={toggleTheme} className="w-full flex items-center justify-center gap-2 text-gray-700 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors py-2 mb-4 border border-gray-300 dark:border-gray-800 rounded-xl">
+              <button onClick={toggleTheme} className="w-full flex items-center justify-center gap-2 text-gray-700 dark:text-gray-400 hover:text-yellow-600 transition-colors py-2 mb-4 border border-gray-300 dark:border-gray-800 rounded-xl">
               {isDark ? <><Sun className="w-4 h-4"/> Light Mode</> : <><Moon className="w-4 h-4"/> Dark Mode</>}
             </button>
-            <Link to="/login" className="block text-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-semibold py-2">Login</Link>
+              <Link to="/login" className="block text-center text-gray-600 dark:text-gray-300 font-semibold py-2">Login</Link>
             <Link to="/register" className="block text-center bg-indigo-600 text-white py-2 rounded-xl font-bold hover:bg-indigo-700 transition-colors">Sign Up</Link>
           </div>
         )}

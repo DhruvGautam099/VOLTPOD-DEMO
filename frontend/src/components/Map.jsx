@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl } from 'react-leaflet';
 import { divIcon } from 'leaflet';
 import { LocateFixed } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 // MapController handles the Leaflet map API directly (external system)
 const MapController = ({ selectedStation, userLocationData }) => {
@@ -43,6 +44,8 @@ const userMarkerIcon = divIcon({
 const Map = ({ stations, selectedStation, onMarkerClick }) => {
   const defaultCenter = [23.2599, 77.4126]; // Bhopal center
   const [userLocationData, setUserLocationData] = useState(null);
+  const { isDark } = useTheme();
+
 
   const locateUser = () => {
     if ('geolocation' in navigator) {
@@ -80,7 +83,7 @@ const Map = ({ stations, selectedStation, onMarkerClick }) => {
         wheelPxPerZoomLevel={120} // Makes scroll wheel zooming slightly smoother/less aggressive
       >
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url={`https://{s}.basemaps.cartocdn.com/${isDark ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`}
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
         
