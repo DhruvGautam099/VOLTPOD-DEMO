@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
+import Profile from './pages/Profile';
 import AIAssistant from './pages/AIAssistant';
 import Sidebar from './components/Sidebar';
 import Landing from './pages/Landing';
@@ -21,6 +22,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/map" element={<Home />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/ai" element={<AIAssistant />} />

@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Zap, Map as MapIcon, Users, BarChart, LogOut, LayoutDashboard, Sparkles, Moon, Sun, Wallet } from 'lucide-react';
+import { Zap, Map as MapIcon, Users, BarChart, LogOut, LayoutDashboard, Sparkles, Moon, Sun, Wallet, User } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 const NavItem = ({ to, icon: Icon, label }) => {
@@ -23,6 +23,7 @@ const NavItem = ({ to, icon: Icon, label }) => {
 
 const Sidebar = () => {
   const navigate = useNavigate();
+
 
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user')) || {};
@@ -63,6 +64,7 @@ const Sidebar = () => {
           
           <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-800/50">
             <p className="text-[10px] font-bold text-gray-500 mb-4 px-2 tracking-widest uppercase">Account</p>
+            {token && <NavItem to="/profile" icon={User} label="My Profile" />}
             {token && <NavItem to="/wallet" icon={Wallet} label="My Wallet" />}
             {user?.role === 'operator' && <NavItem to="/operator" icon={BarChart} label="Revenue" />}
             {user?.role === 'admin' && <NavItem to="/admin" icon={Users} label="Admin Panel" />}
@@ -109,7 +111,7 @@ const Sidebar = () => {
                   ? <Sun className="relative z-10 w-4 h-4 text-yellow-400" />
                   : <Moon className="relative z-10 w-4 h-4 text-indigo-500" />}
               </button>
-              <button onClick={handleLogout} className="text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors p-1">
+              <button onClick={handleLogout} className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all duration-300" title="Logout">
                 <LogOut className="w-5 h-5" />
               </button>
             </div>
