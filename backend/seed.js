@@ -23,23 +23,24 @@ const seedDatabase = async () => {
   // 1. Create Core Users
   const admin = await User.create({
     name: 'Hackathon Admin',
-    email: 'admin@chargemate.com',
+    email: 'admin@voltpod.com', // Updated to VoltPod
     password: hashedPassword,
     role: 'admin'
   });
 
   const operator = await User.create({
     name: 'Bhopal Charging Networks',
-    email: 'operator@chargemate.com',
+    email: 'operator@voltpod.com', // Updated to VoltPod
     password: hashedPassword,
     role: 'operator'
   });
 
   const standardUser = await User.create({
     name: 'Test Driver',
-    email: 'user@chargemate.com',
+    email: 'user@voltpod.com', // Updated to VoltPod
     password: hashedPassword,
-    role: 'user'
+    role: 'user',
+    walletBalance: 1500 // Added default wallet balance for testing
   });
 
   // 2. Bhopal Station Data (20 Stations)
@@ -68,6 +69,7 @@ const seedDatabase = async () => {
 
   // 3. Create the Stations & Slots dynamically
   let firstStationId = null;
+  let firstSlotId = null;
 
   for (let i = 0; i < stationLocations.length; i++) {
     const loc = stationLocations[i];
@@ -78,7 +80,7 @@ const seedDatabase = async () => {
       name: loc.name,
       address: loc.address,
       coordinates: { lat: loc.lat, lng: loc.lng },
-      totalSlots: 3, // We will generate 3 slots per station
+      totalSlots: 5, // Upgraded to 5 slots for better spread!
       chargerTypes: ['Type 2', 'CCS', 'CHAdeMO'],
       pricePerUnit: loc.price,
       operatingHours: '24/7',
@@ -87,15 +89,14 @@ const seedDatabase = async () => {
 
     if (i === 0) firstStationId = station._id;
 
-    // Create 3 Slots for each station
-    await Slot.create([
+    // Create 5 varied Slots for each station
+    const createdSlots = await Slot.create([
       { 
         stationId: station._id, 
         slotNumber: 1, 
         chargerType: 'CCS', 
         powerKW: 50, 
-        // Make roughly 20% of slots occupied/reserved for realism
-        status: Math.random() > 0.8 ? 'occupied' : 'available' 
+        status: Math.random() > 0.7 ? 'occupied' : 'available' 
       },
       { 
         stationId: station._id, 
@@ -109,27 +110,44 @@ const seedDatabase = async () => {
         slotNumber: 3, 
         chargerType: 'CHAdeMO', 
         powerKW: 150, 
-        // Occasional maintenance status
         status: Math.random() > 0.9 ? 'maintenance' : 'available' 
+      },
+      { 
+        stationId: station._id, 
+        slotNumber: 4, 
+        chargerType: 'Type 2', 
+        powerKW: 11, // Added a slower AC charger
+        status: 'available' 
+      },
+      { 
+        stationId: station._id, 
+        slotNumber: 5, 
+        chargerType: 'CCS', 
+        powerKW: 120, // Added an Ultra-Fast DC charger
+        status: Math.random() > 0.8 ? 'occupied' : 'available' 
       }
     ]);
+
+    if (i === 0) firstSlotId = createdSlots[0]._id; // Capture a real Slot ID for the dummy booking
   }
 
   // 4. Create a dummy completed booking for the Operator Dashboard
-  if (firstStationId) {
+  if (firstStationId && firstSlotId) {
+    const dummyTotalCost = 450;
     await Booking.create({
       userId: standardUser._id,
       stationId: firstStationId,
-      slotId: firstStationId, 
+      slotId: firstSlotId, // FIXED: Now uses an actual slot ID instead of the station ID
       date: '2026-05-13',
       startTime: '10:00',
       endTime: '11:00',
       status: 'completed',
-      totalCost: 450
+      totalCost: dummyTotalCost,
+      advancePaid: dummyTotalCost * 0.30 // FIXED: Prevents the schema validation crash
     });
   }
 
-  console.log('Database successfully seeded with 20 Bhopal stations!');
+  console.log('Database successfully seeded with 20 Bhopal stations (5 slots each)!');
   process.exit();
 };
 
