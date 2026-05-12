@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 const BookingModal = ({ station, slot, onClose, onSuccess }) => {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [time, setTime] = useState('10:00');
-  const [duration, setDuration] = useState(1);
+  const [duration, setDuration] = useState(60); // Changed to minutes
   const [paymentMethod, setPaymentMethod] = useState('wallet');
   const [showQR, setShowQR] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,7 @@ const BookingModal = ({ station, slot, onClose, onSuccess }) => {
   
   const user = JSON.parse(localStorage.getItem('user')) || {};
 
-  const totalCost = station.pricePerUnit * slot.powerKW * duration;
+  const totalCost = station.pricePerUnit * slot.powerKW * (duration / 60);
   const advancePayment = totalCost * 0.30;
   const dueAtStation = totalCost - advancePayment;
 
@@ -28,8 +28,10 @@ const BookingModal = ({ station, slot, onClose, onSuccess }) => {
     try {
       const token = localStorage.getItem('token');
       const [hours, minutes] = time.split(':');
-      let endHours = parseInt(hours) + parseInt(duration);
-      const endTime = `${endHours.toString().padStart(2, '0')}:${minutes}`;
+      const totalMinutes = parseInt(hours) * 60 + parseInt(minutes) + parseInt(duration);
+      const endHours = Math.floor(totalMinutes / 60) % 24;
+      const endMins = totalMinutes % 60;
+      const endTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
 
       const bookingRes = await axios.post('http://localhost:5000/api/bookings', {
         stationId: station._id, slotId: slot._id, date, startTime: time, endTime, totalCost, paymentMethod
@@ -123,8 +125,14 @@ const BookingModal = ({ station, slot, onClose, onSuccess }) => {
                   </div>
                   <div>
                     <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase mb-2"><Battery className="w-4 h-4 text-indigo-500" /> Duration</label>
-                    <select value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full bg-gray-50 dark:bg-[#0a0f1a] border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-800 dark:text-white focus:outline-none">
-                      <option value="1">1 Hour</option><option value="2">2 Hours</option>
+                    <select value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="w-full bg-gray-50 dark:bg-[#0a0f1a] border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-800 dark:text-white focus:outline-none">
+                      <option value="5">5 Minutes</option>
+                      <option value="10">10 Minutes</option>
+                      <option value="15">15 Minutes</option>
+                      <option value="30">30 Minutes</option>
+                      <option value="45">45 Minutes</option>
+                      <option value="60">1 Hour</option>
+                      <option value="120">2 Hours</option>
                     </select>
                   </div>
                 </div>
