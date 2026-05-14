@@ -1,12 +1,38 @@
 // src/pages/OperatorDashboard.jsx
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { CreditCard, CheckCircle, Wrench, Activity, ListTodo, Zap } from 'lucide-react';
+import { CreditCard, CheckCircle, Wrench, Activity, ListTodo, Zap, QrCode, IndianRupee, XCircle } from 'lucide-react';
 
+// --- SUB-COMPONENT: Live Timer ---
+const LiveTimer = ({ startTime }) => {
+  const [elapsed, setElapsed] = useState('00:00:00');
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      const start = new Date(startTime || now);
+      const diff = Math.floor((now - start) / 1000);
+      
+      const hours = String(Math.floor(diff / 3600)).padStart(2, '0');
+      const minutes = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+      const seconds = String(diff % 60).padStart(2, '0');
+      
+      setElapsed(`${hours}:${minutes}:${seconds}`);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  return <span className="font-mono font-bold text-[#00ff88] tracking-wider">{elapsed}</span>;
+};
+
+// --- MAIN DASHBOARD COMPONENT ---
 const OperatorDashboard = () => {
   const [data, setData] = useState({ stations: [], slots: [], bookings: [], totalRevenue: 0, totalCompleted: 0 });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('tasks'); // 'tasks', 'hardware', 'overview'
+  
+  // Billing Modal State
+  const [billingModal, setBillingModal] = useState({ isOpen: false, task: null, amount: '' });
 
   const fetchData = async () => {
     try {
@@ -14,7 +40,12 @@ const OperatorDashboard = () => {
       const res = await axios.get('http://localhost:5000/api/operator/dashboard', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setData(res.data);
+      // Ensure we always have arrays even if backend sends empty response
+      setData({
+        ...res.data,
+        bookings: res.data.bookings || [],
+        slots: res.data.slots || [],
+      });
       setLoading(false);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -31,7 +62,11 @@ const OperatorDashboard = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (!ignore) {
-          setData(res.data);
+          setData({
+            ...res.data,
+            bookings: res.data.bookings || [],
+            slots: res.data.slots || [],
+          });
           setLoading(false);
         }
       } catch (err) {
@@ -69,19 +104,26 @@ const OperatorDashboard = () => {
     }
   };
 
+  const handleCompleteAndBill = async () => {
+    if (billingModal.task) {
+      await handleBookingStatus(billingModal.task._id, 'completed');
+      setBillingModal({ isOpen: false, task: null, amount: '' });
+    }
+  };
+
   if (loading) {
     return (
-      <div className="h-full flex justify-center items-center bg-[#0a0f1a]">
+      <div className="h-screen flex justify-center items-center bg-[#0a0f1a]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00ff88]"></div>
       </div>
     );
   }
 
   // Filter out completed/cancelled bookings for the active task view
-  const activeTasks = data.bookings.filter(b => b.status === 'upcoming' || b.status === 'active');
+  const activeTasks = data.bookings.filter(b => b.status === 'upcoming' || b.status === 'active' || b.status === 'pending');
 
   return (
-    <div className="h-full overflow-y-auto p-8 bg-[#0a0f1a] text-white custom-scrollbar">
+    <div className="h-screen overflow-y-auto p-8 bg-[#0a0f1a] text-white custom-scrollbar relative">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
@@ -131,30 +173,39 @@ const OperatorDashboard = () => {
                         <span className={`text-xs font-bold px-2 py-1 rounded uppercase ${task.status === 'active' ? 'bg-[#00ff88]/20 text-[#00ff88]' : 'bg-gray-800 text-gray-300'}`}>
                           {task.status}
                         </span>
-                        <h3 className="font-bold text-lg mt-2 text-white">{task.userId?.name}</h3>
+                        <h3 className="font-bold text-lg mt-2 text-white">{task.userId?.name || 'EV Driver'}</h3>
                         <p className="text-sm text-gray-400">{task.stationId?.name} • Slot {task.slotId?.slotNumber}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[#00ff88] font-bold text-xl">₹{task.totalCost}</p>
-                        <p className="text-xs text-gray-500">{task.startTime} - {task.endTime}</p>
+                        <p className="text-xs text-gray-500">Advance: ₹{task.advancePaid || 0}</p>
                       </div>
                     </div>
                     
+                    {task.status === 'active' && (
+                      <div className="bg-[#0a0f1a] p-3 rounded-lg border border-gray-800 mb-4 flex justify-between items-center">
+                        <span className="text-sm text-gray-400 flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-[#00ff88] animate-pulse" /> Live Session
+                        </span>
+                        <LiveTimer startTime={task.updatedAt || new Date()} />
+                      </div>
+                    )}
+
                     <div className="border-t border-gray-800 pt-4 flex gap-3">
-                      {task.status === 'upcoming' && (
+                      {(task.status === 'upcoming' || task.status === 'pending') && (
                         <button 
                           onClick={() => handleBookingStatus(task._id, 'active')}
-                          className="flex-1 bg-gradient-to-r from-blue-600 to-[#00d4ff] text-white font-bold py-2 rounded-lg hover:shadow-lg transition-all"
+                          className="flex-1 bg-gradient-to-r from-blue-600 to-[#00d4ff] text-white font-bold py-3 rounded-lg hover:shadow-[0_0_15px_rgba(0,212,255,0.4)] transition-all flex justify-center items-center gap-2"
                         >
-                          Car Arrived - Start Charge
+                          <Zap className="w-5 h-5" /> Start Charge
                         </button>
                       )}
                       {task.status === 'active' && (
                         <button 
-                          onClick={() => handleBookingStatus(task._id, 'completed')}
-                          className="flex-1 bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/50 hover:bg-[#00ff88]/20 font-bold py-2 rounded-lg transition-all flex justify-center items-center gap-2"
+                          onClick={() => setBillingModal({ isOpen: true, task: task, amount: (task.totalCost - (task.advancePaid || 0)) })}
+                          className="flex-1 bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/50 hover:bg-[#00ff88]/20 font-bold py-3 rounded-lg transition-all flex justify-center items-center gap-2"
                         >
-                          <CheckCircle className="w-5 h-5" /> Finish & Bill
+                          <XCircle className="w-5 h-5" /> Stop & Bill
                         </button>
                       )}
                     </div>
@@ -257,6 +308,61 @@ const OperatorDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* BILLING MODAL OVERLAY */}
+      {billingModal.isOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#111827] border border-gray-700 w-full max-w-md rounded-2xl shadow-[0_0_30px_rgba(0,0,0,0.5)] p-6">
+            <h2 className="text-2xl font-bold font-['Orbitron'] text-white mb-2">Final Settlement</h2>
+            <p className="text-sm text-gray-400 mb-6">Stop session and collect remaining balance.</p>
+
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-400 mb-2">Final Amount Due (₹)</label>
+              <div className="relative">
+                <IndianRupee className="absolute left-3 top-3 w-5 h-5 text-gray-500" />
+                <input 
+                  type="number" 
+                  value={billingModal.amount}
+                  onChange={(e) => setBillingModal({ ...billingModal, amount: e.target.value })}
+                  className="w-full bg-[#0a0f1a] border border-gray-700 rounded-xl py-3 pl-10 pr-4 text-[#00ff88] font-bold text-lg focus:outline-none focus:border-[#00ff88] transition-colors"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Calculated as: Total Cost - Advance Paid</p>
+            </div>
+
+            {billingModal.amount > 0 && (
+              <div className="flex flex-col items-center bg-[#0a0f1a] p-4 rounded-xl border border-gray-800 mb-6">
+                <p className="text-sm font-bold text-gray-400 mb-4 flex items-center gap-2">
+                  <QrCode className="w-4 h-4 text-[#00d4ff]"/> Scan to Pay Remaining
+                </p>
+                {/* 🚨 Replace 'yourupi@bank' below with your actual UPI ID for the demo 🚨 */}
+                <div className="p-2 bg-white rounded-lg">
+                  <img 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=yourupi@bank&pn=VoltPod&am=${billingModal.amount}&cu=INR`} 
+                    alt="Payment QR" 
+                    className="rounded"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setBillingModal({ isOpen: false, task: null, amount: '' })}
+                className="flex-1 py-3 bg-transparent border border-gray-700 hover:bg-gray-800 text-gray-300 font-bold rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleCompleteAndBill}
+                className="flex-1 py-3 bg-[#00ff88]/10 border border-[#00ff88]/50 hover:bg-[#00ff88]/20 text-[#00ff88] font-bold rounded-xl transition-all flex justify-center items-center gap-2"
+              >
+                <CheckCircle className="w-5 h-5" /> Complete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
